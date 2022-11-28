@@ -272,7 +272,8 @@ fi
 
 # Memory options
 if [ -z "$KAFKA_HEAP_OPTS" ]; then
-  KAFKA_HEAP_OPTS="-Xmx256M"
+  KAFKA_HEAP_OPTS="
+  -Xmx256M"
 fi
 
 # JVM performance options
@@ -341,3 +342,46 @@ if [ "x$DAEMON_MODE" = "xtrue" ]; then
 else
   exec "$JAVA" $KAFKA_HEAP_OPTS $KAFKA_JVM_PERFORMANCE_OPTS $KAFKA_GC_LOG_OPTS $KAFKA_JMX_OPTS $KAFKA_LOG4J_OPTS -cp "$CLASSPATH" $KAFKA_OPTS "$@"
 fi
+
+# exec后的内容如下：
+#/Users/yunqing.suothoughtworks.com/.jenv/versions/openjdk64-17.0.2/bin/java
+#-Xmx1G
+#-Xms1G -server
+#-XX:+UseG1GC
+#-XX:MaxGCPauseMillis=20
+#-XX:InitiatingHeapOccupancyPercent=35
+#-XX:+ExplicitGCInvokesConcurrent
+#-XX:MaxInlineLevel=15 -Djava.awt.headless=true
+#-Xlog:gc*:file=/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../logs/kafkaServer-gc.log:time,tags:filecount=10,filesize=100M
+#com.sun.management.jmxremote
+#com.sun.management.jmxremote.authenticate=false
+#com.sun.management.jmxremote.ssl=false
+#kafka.logs.dir=/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../logs
+#log4j.configuration=file:./../config/log4j.properties
+#-cp /Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../core/build/dependant-libs-2.13.8/*
+#   :/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../examples/build/libs/kafka-examples-3.4.0-SNAPSHOT.jar
+#   :/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../clients/build/libs/kafka-clients-3.4.0-SNAPSHOT.jar
+#   :/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../streams/build/libs/kafka-streams-3.4.0-SNAPSHOT.jar
+#   :/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../streams/examples/build/libs/kafka-streams-examples-3.4.0-SNAPSHOT.jar
+#   :/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../streams/build/dependant-libs-2.13.8/rocksdbjni-6.29.4.1.jar
+#   :/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../shell/build/libs/kafka-shell-3.4.0-SNAPSHOT.jar
+#   :/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../shell/build/dependant-libs-2.13.8/*
+#   :/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../tools/build/libs/kafka-tools-3.4.0-SNAPSHOT.jar
+#   :/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../tools/build/dependant-libs-2.13.8/*
+#   :/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../trogdor/build/libs/trogdor-3.4.0-SNAPSHOT.jar
+#   :/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../trogdor/build/dependant-libs-2.13.8/*
+#   :/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../connect/api/build/libs/connect-api-3.4.0-SNAPSHOT.jar
+#   :/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../connect/api/build/dependant-libs/*
+#   :/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../connect/transforms/build/libs/connect-transforms-3.4.0-SNAPSHOT.jar
+#   :/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../connect/transforms/build/dependant-libs/*
+#   :/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../connect/runtime/build/dependant-libs/*
+#   :/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../connect/mirror-client/build/libs/connect-mirror-client-3.4.0-SNAPSHOT.jar
+#   :/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../connect/mirror-client/build/dependant-libs/*
+#   :/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../connect/json/build/libs/connect-json-3.4.0-SNAPSHOT.jar
+#   :/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../connect/json/build/dependant-libs/*
+#   :/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../connect/basic-auth-extension/build/libs/connect-basic-auth-extension-3.4.0-SNAPSHOT.jar
+#   :/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../connect/basic-auth-extension/build/dependant-libs/*
+#   :/Users/yunqing.suothoughtworks.com/Desktop/yunqing/kafka/bin/../core/build/libs/kafka_2.13-3.4.0-SNAPSHOT.jar
+#kafka.Kafka ./test/server.properties
+
+#关注347行、361行、385行，java -cp jar1:jar2:jar3 启动类 启动参数；java -cp参考文章https://blog.csdn.net/qq_39774931/article/details/118539537
