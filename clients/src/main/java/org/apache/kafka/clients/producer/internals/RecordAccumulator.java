@@ -193,15 +193,18 @@ public final class RecordAccumulator {
         if (headers == null) headers = Record.EMPTY_HEADERS;
         try {
             // check if we have an in-progress batch
+            //ConcurrentMap<TopicPartition, Deque<ProducerBatch>> batches;
+            //获取或者创建一个队列(一个partition对应一个队列，对应关系存在ConcurrentMap batches中)
             Deque<ProducerBatch> dq = getOrCreateDeque(tp);
             synchronized (dq) {
                 if (closed)
                     throw new KafkaException("Producer closed while send in progress");
+                //将新的Message朝已有的队列里最后一个batch上添加，如果batch为空，说明队列里为空，需要创建新batch，返回null;
+                //若batch已满，则无法追加，就放弃,并返回提示batchIsFull
                 RecordAppendResult appendResult = tryAppend(timestamp, key, value, headers, callback, dq, nowMs);
                 if (appendResult != null)
                     return appendResult;
             }
-
             // we don't have an in-progress record batch try to allocate a new batch
             if (abortOnNewBatch) {
                 // Return a result that will cause another call to append.
@@ -209,8 +212,11 @@ public final class RecordAccumulator {
             }
 
             byte maxUsableMagic = apiVersions.maxUsableProduceMagic();
+            //batchSize和压缩后的消息比较大小，取大的，为新的batch Size,避免出现batchSize（默认16k）小于消息大小（加入17K）将消息分成两部分
+            //也就是说， 批次大小，最小为batchSize，但也可能大于该值；
             int size = Math.max(this.batchSize, AbstractRecords.estimateSizeInBytesUpperBound(maxUsableMagic, compression, key, value, headers));
             log.trace("Allocating a new {} byte message buffer for topic {} partition {} with remaining timeout {}ms", size, tp.topic(), tp.partition(), maxTimeToBlock);
+           //申请内存，内存池分配
             buffer = free.allocate(size, maxTimeToBlock);
 
             // Update the current time in case the buffer allocation blocked above.
@@ -225,12 +231,13 @@ public final class RecordAccumulator {
                     // Somebody else found us a batch, return the one we waited for! Hopefully this doesn't happen often...
                     return appendResult;
                 }
-
+                //封装内存
                 MemoryRecordsBuilder recordsBuilder = recordsBuilder(buffer, maxUsableMagic);
+                //得到batch对象，对象里包含分区信息；recordsBuilder，batch构建器；
                 ProducerBatch batch = new ProducerBatch(tp, recordsBuilder, nowMs);
                 FutureRecordMetadata future = Objects.requireNonNull(batch.tryAppend(timestamp, key, value, headers,
                         callback, nowMs));
-
+                //向队列末尾添加batch；
                 dq.addLast(batch);
                 incomplete.add(batch);
 

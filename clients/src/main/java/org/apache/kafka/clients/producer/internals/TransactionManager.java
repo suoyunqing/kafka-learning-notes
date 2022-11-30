@@ -443,6 +443,8 @@ public class TransactionManager {
     }
 
     public synchronized void failIfNotReadyForSend() {
+        //如果TransactionManager的处于State.ABORTABLE_ERROR || currentState == State.FATAL_ERROR，
+        //说明上一个事务出现异常，那该transactionManager就不能继续发送消息；
         if (hasError())
             throw new KafkaException("Cannot perform send because at least one previous transactional or " +
                     "idempotent request has failed with errors.", lastError);
