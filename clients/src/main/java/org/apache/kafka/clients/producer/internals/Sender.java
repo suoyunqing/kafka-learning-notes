@@ -211,6 +211,7 @@ public class Sender implements Runnable {
 
     private void addToInflightBatches(List<ProducerBatch> batches) {
         for (ProducerBatch batch : batches) {
+            // Map<TopicPartition, List<ProducerBatch>>，A per-partition queue of batches ordered by creation time for tracking the in-flight batches
             List<ProducerBatch> inflightBatchList = inFlightBatches.get(batch.topicPartition);
             if (inflightBatchList == null) {
                 inflightBatchList = new ArrayList<>();
@@ -324,7 +325,9 @@ public class Sender implements Runnable {
         }
 
         long currentTimeMs = time.milliseconds();
+        //发送数据
         long pollTimeout = sendProducerData(currentTimeMs);
+        //获取发送结果
         client.poll(pollTimeout, currentTimeMs);
     }
 
@@ -358,7 +361,9 @@ public class Sender implements Runnable {
         }
 
         // create produce requests
+        //node和可以向该node发送的batchList的映射
         Map<Integer, List<ProducerBatch>> batches = this.accumulator.drain(cluster, result.readyNodes, this.maxRequestSize, now);
+        //记录Map<TopicPartition, List<ProducerBatch>>的数据结构中；
         addToInflightBatches(batches);
         if (guaranteeMessageOrder) {
             // Mute all the partitions drained
@@ -838,6 +843,9 @@ public class Sender implements Runnable {
         String nodeId = Integer.toString(destination);
         ClientRequest clientRequest = client.newClientRequest(nodeId, requestBuilder, now, acks != 0,
                 requestTimeoutMs, callback);
+        //nodeId,partition1---records
+        //       partition2---records
+        //       partition3---records
         client.send(clientRequest, now);
         log.trace("Sent produce request to {}: {}", nodeId, requestBuilder);
     }

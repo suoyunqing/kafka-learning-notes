@@ -467,12 +467,22 @@ public final class RecordAccumulator {
                         // Note that entries are currently not removed from batches when deque is empty.
                         unknownLeaderTopics.add(part.topic());
                     } else if (!readyNodes.contains(leader) && !isMuted(part)) {
+                        //waitedTimeMs = nowMs - lastAttemptMs；
                         long waitedTimeMs = batch.waitedTimeMs(nowMs);
+                        //尝试次数>1且等待时间<retryBackoffMs,则当前batch是正在重试的batch
                         boolean backingOff = batch.attempts() > 0 && waitedTimeMs < retryBackoffMs;
+                        //需要等待的时间
                         long timeToWaitMs = backingOff ? retryBackoffMs : lingerMs;
                         boolean full = deque.size() > 1 || batch.isFull();
+                        //需要等待的时间和已经等待的时间比较，得出是否已经过期；
                         boolean expired = waitedTimeMs >= timeToWaitMs;
                         boolean transactionCompleting = transactionManager != null && transactionManager.isCompleting();
+                        //只要满足一个条件，就可以发送消息
+                        //1. 有full的batch;
+                        //2. 有消息在缓冲区排队（也说明full了）;
+                        //3. producer关闭;
+                        //4. flushInProgress;
+                        //5. 事务完成了；
                         boolean sendable = full
                             || expired
                             || exhausted
@@ -492,6 +502,7 @@ public final class RecordAccumulator {
                 }
             }
         }
+        //leader node -- leader partition --- queue
         return new ReadyCheckResult(readyNodes, nextReadyCheckDelayMs, unknownLeaderTopics);
     }
 
@@ -559,6 +570,7 @@ public final class RecordAccumulator {
             this.drainIndex = (this.drainIndex + 1) % parts.size();
 
             // Only proceed if the partition has no in-flight batches.
+            //in-flight batches
             if (isMuted(tp))
                 continue;
 
