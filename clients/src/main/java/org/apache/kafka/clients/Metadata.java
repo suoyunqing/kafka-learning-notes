@@ -275,6 +275,7 @@ public class Metadata implements Closeable {
 
         this.needPartialUpdate = requestVersion < this.requestVersion;
         this.lastRefreshMs = nowMs;
+        //更新元数据
         this.updateVersion += 1;
         if (!isPartialUpdate) {
             this.needFullUpdate = false;
