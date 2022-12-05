@@ -965,13 +965,16 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         acquireAndEnsureOpen();
         try {
             maybeThrowInvalidGroupIdException();
+            //没有待订阅的主题，则抛出异常；
             if (topics == null)
                 throw new IllegalArgumentException("Topic collection to subscribe to cannot be null");
             if (topics.isEmpty()) {
                 // treat subscribing to empty topic list as the same as unsubscribing
                 this.unsubscribe();
             } else {
+                //正常订阅逻辑
                 for (String topic : topics) {
+                    //再次校验topic为空
                     if (Utils.isBlank(topic))
                         throw new IllegalArgumentException("Topic collection to subscribe to cannot contain null or empty topic");
                 }
@@ -979,6 +982,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                 throwIfNoAssignorsConfigured();
                 fetcher.clearBufferedDataForUnassignedTopics(topics);
                 log.info("Subscribed to topic(s): {}", Utils.join(topics, ", "));
+                //订阅主题，订阅成功后更新订阅主题情况；监听器监听其他节点是否OK；
                 if (this.subscriptions.subscribe(new HashSet<>(topics), listener))
                     metadata.requestUpdateForNewTopics();
             }
@@ -1249,7 +1253,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                         log.warn("Still waiting for metadata");
                     }
                 }
-
+                //抓取数据
                 final Map<TopicPartition, List<ConsumerRecord<K, V>>> records = pollForFetches(timer);
                 if (!records.isEmpty()) {
                     // before returning the fetched records, we can send off the next round of fetches

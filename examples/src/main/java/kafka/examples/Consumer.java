@@ -70,6 +70,11 @@ public class Consumer extends ShutdownableThread {
     }
 
     @Override
+    /**
+     * This method is repeatedly invoked until the thread shuts down or this method throws an exception
+     *
+     * consumer会不停地调用subscribe()、poll()
+     */
     public void doWork() {
         consumer.subscribe(Collections.singletonList(this.topic));
         ConsumerRecords<Integer, String> records = consumer.poll(Duration.ofSeconds(1));

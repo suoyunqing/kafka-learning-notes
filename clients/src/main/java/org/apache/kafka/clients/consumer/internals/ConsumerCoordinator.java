@@ -473,6 +473,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         invokeCompletedOffsetCommitCallbacks();
 
         if (subscriptions.hasAutoAssignedPartitions()) {
+            //如果没有指定
             if (protocol == null) {
                 throw new IllegalStateException("User configured " + ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG +
                     " to empty while trying to subscribe for group protocol to auto assign partitions");
