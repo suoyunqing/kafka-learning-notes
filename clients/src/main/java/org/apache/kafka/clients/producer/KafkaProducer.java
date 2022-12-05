@@ -432,6 +432,9 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                         logContext,
                         clusterResourceListeners,
                         Time.SYSTEM);
+                //初始化KafkaProducer时，没有topic信息，也就无法去获取某个topic的元数据。
+                //此时的ProducerMetadata,还只包含cluster的node信息
+                //bootstrap(),创建MetadataCache对象，并赋值给metadata的cache；
                 this.metadata.bootstrap(addresses);
             }
             this.errors = this.metrics.sensor("errors");
@@ -900,7 +903,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         try {
             throwIfProducerClosed();
             // first make sure the metadata for the topic is available
-            //获取topic的分区情况，只有知道了某个topic个有多少个分区，才能进行下一步的消息分区操作；
+            //步骤一：获取topic的分区情况，只有知道了某个topic个有多少个分区，才能进行下一步的消息分区操作；
             long nowMs = time.milliseconds();
             ClusterAndWaitTime clusterAndWaitTime;
             try {
@@ -922,7 +925,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                         " specified in key.serializer", cce);
             }
             byte[] serializedValue;
-            //对Key和value进行序列化；
+            //步骤二：对Key和value进行序列化；
             try {
                 serializedValue = valueSerializer.serialize(record.topic(), record.headers(), record.value());
             } catch (ClassCastException cce) {
@@ -930,7 +933,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                         " to class " + producerConfig.getClass(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG).getName() +
                         " specified in value.serializer", cce);
             }
-            //分区
+            //步骤三：分区
             int partition = partition(record, serializedKey, serializedValue, cluster);
             tp = new TopicPartition(record.topic(), partition);
 
@@ -940,7 +943,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             //将序列化后的key，values，header加到一起，算出序列化后消息的大小；
             int serializedSize = AbstractRecords.estimateSizeInBytesUpperBound(apiVersions.maxUsableProduceMagic(),
                     compressionType, serializedKey, serializedValue, headers);
-            //单条消息的大小如果超过maxRequestSize，totalMemorySize，则认为该消息过大，无法发送，抛出异常
+            //步骤四：单条消息的大小如果超过maxRequestSize，totalMemorySize，则认为该消息过大，无法发送，抛出异常
             ensureValidRecordSize(serializedSize);
             long timestamp = record.timestamp() == null ? nowMs : record.timestamp();
             if (log.isTraceEnabled()) {
@@ -952,7 +955,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             if (transactionManager != null && transactionManager.isTransactional()) {
                 transactionManager.failIfNotReadyForSend();
             }
-            //消息添加至缓冲区
+            //步骤五：把消息添加至缓冲区（32M）,并封装成batch
             RecordAccumulator.RecordAppendResult result = accumulator.append(tp, timestamp, serializedKey,
                     serializedValue, headers, interceptCallback, remainingWaitMs, true, nowMs);
 
@@ -973,7 +976,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
 
             if (transactionManager != null && transactionManager.isTransactional())
                 transactionManager.maybeAddPartitionToTransaction(tp);
-            //如果发现batch满了，或者创建了新的batch，则唤醒sender线程，也即开始将batch发送到broker
+            //步骤六：如果发现batch满了，或者创建了新的batch，则唤醒sender线程，也即开始将batch发送到broker
             if (result.batchIsFull || result.newBatchCreated) {
                 log.trace("Waking up the sender since topic {} partition {} is either full or getting a new batch", record.topic(), partition);
                 this.sender.wakeup();

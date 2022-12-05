@@ -60,20 +60,28 @@ import static org.apache.kafka.common.record.RecordBatch.NO_PARTITION_LEADER_EPO
  */
 public class Metadata implements Closeable {
     private final Logger log;
+    //默认值100ms，两次更新元数据的最小时间间隔，目的是减小网络压力
     private final long refreshBackoffMs;
+    //多久更新一次元数据，默认5分钟
     private final long metadataExpireMs;
+    //每次更新元数据，就会更新元数据版本号；
     private int updateVersion;  // bumped on every metadata response
     private int requestVersion; // bumped on every new topic addition
+    //上一次更新元数据的时间；
     private long lastRefreshMs;
+    //上一次更新元数据成功的时间；
     private long lastSuccessfulRefreshMs;
     private KafkaException fatalException;
     private Set<String> invalidTopics;
     private Set<String> unauthorizedTopics;
+    //Kaafka集群的元数据，实际保存在这个对象里
     private MetadataCache cache = MetadataCache.empty();
     private boolean needFullUpdate;
     private boolean needPartialUpdate;
     private final ClusterResourceListeners clusterResourceListeners;
     private boolean isClosed;
+    //TODO EpochNumber
+    //记录当前已有的topic
     private final Map<TopicPartition, Integer> lastSeenLeaderEpochs;
 
     /**
