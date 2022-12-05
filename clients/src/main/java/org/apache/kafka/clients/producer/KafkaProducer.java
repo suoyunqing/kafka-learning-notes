@@ -390,10 +390,11 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             ClusterResourceListeners clusterResourceListeners = configureClusterResourceListeners(keySerializer,
                     valueSerializer, interceptorList, reporters);
             //批量发送时，每一批作为一个请求发往broker，maxRequestSize每一批次消息的大小；默认1M
+            //这个值偏小，生产中需要调整，经验值10M；
             this.maxRequestSize = config.getInt(ProducerConfig.MAX_REQUEST_SIZE_CONFIG);
             //消息缓冲区的大小，默认32M；
             this.totalMemorySize = config.getLong(ProducerConfig.BUFFER_MEMORY_CONFIG);
-            //压缩方式，默认是none;
+            //压缩方式，默认是none;一次发出的消息更多，但producer会消耗更多的CPU
             this.compressionType = CompressionType.forName(config.getString(ProducerConfig.COMPRESSION_TYPE_CONFIG));
 
             this.maxBlockTimeMs = config.getLong(ProducerConfig.MAX_BLOCK_MS_CONFIG);
@@ -424,7 +425,9 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                 this.metadata = metadata;
             } else {
                 this.metadata = new ProducerMetadata(retryBackoffMs,
+                        //metadata.max.age.ms, 默认值5分钟，每隔这么久强制刷新元数据
                         config.getLong(ProducerConfig.METADATA_MAX_AGE_CONFIG),
+                        //topic元数据的缓存时间，向该topic发送消息后经过这么久，会强制刷新；
                         config.getLong(ProducerConfig.METADATA_MAX_IDLE_CONFIG),
                         logContext,
                         clusterResourceListeners,
@@ -453,6 +456,9 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     // visible for testing
     Sender newSender(LogContext logContext, KafkaClient kafkaClient, ProducerMetadata metadata) {
         //单个broker的缓存请求个数，默认5个；
+        //发送数据时，其实有多个网络连接，该值表示每个连接可以允许producer端发送给broker消息，但没有收到消息回应的消息个数
+        //因为kafka有重试机制，所以有可能会造成数据乱序。若想保证数据有序，则需将该值设置为1(但依然只能保证单个分区的数据有序)
+        //TODO 幂等性与数据的顺序
         int maxInflightRequests = producerConfig.getInt(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION);
        //请求超时时间，默认30s；
         int requestTimeoutMs = producerConfig.getInt(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG);
@@ -469,9 +475,9 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                 producerConfig.getLong(ProducerConfig.RECONNECT_BACKOFF_MS_CONFIG),
                 //总的重试时间；
                 producerConfig.getLong(ProducerConfig.RECONNECT_BACKOFF_MAX_MS_CONFIG),
-                //发送缓冲区大小，默认128KB；
+                //socket发送缓冲区大小，默认128KB；
                 producerConfig.getInt(ProducerConfig.SEND_BUFFER_CONFIG),
-                //接收缓冲区大小，默认32KB；
+                //socket接收缓冲区大小，默认32KB；
                 producerConfig.getInt(ProducerConfig.RECEIVE_BUFFER_CONFIG),
                 requestTimeoutMs,
                 producerConfig.getLong(ProducerConfig.SOCKET_CONNECTION_SETUP_TIMEOUT_MS_CONFIG),
@@ -490,6 +496,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                 maxInflightRequests == 1,
                 producerConfig.getInt(ProducerConfig.MAX_REQUEST_SIZE_CONFIG),
                 acks,
+                //项目中一般都会设置
                 producerConfig.getInt(ProducerConfig.RETRIES_CONFIG),
                 metricsRegistry.senderMetrics,
                 time,
