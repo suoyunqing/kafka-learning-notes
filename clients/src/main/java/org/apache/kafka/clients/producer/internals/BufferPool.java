@@ -105,6 +105,7 @@ public class BufferPool {
      *         forever)
      */
     public ByteBuffer allocate(int size, long maxTimeToBlockMs) throws InterruptedException {
+        //totalMemory，默认32M
         if (size > this.totalMemory)
             throw new IllegalArgumentException("Attempt to allocate " + size
                                                + " bytes, but there is a hard limit of "
@@ -112,6 +113,7 @@ public class BufferPool {
                                                + " on memory allocations.");
 
         ByteBuffer buffer = null;
+        //加锁，线程安全
         this.lock.lock();
 
         if (this.closed) {
@@ -258,6 +260,7 @@ public class BufferPool {
     public void deallocate(ByteBuffer buffer, int size) {
         lock.lock();
         try {
+            //如果还回来的内存，看好等于一个标准批次的大小，则归还到free中，否则归还到free中
             if (size == this.poolableSize && size == buffer.capacity()) {
                 buffer.clear();
                 this.free.add(buffer);
@@ -266,6 +269,7 @@ public class BufferPool {
             }
             Condition moreMem = this.waiters.peekFirst();
             if (moreMem != null)
+                //释放内存之后，都会唤醒等待线程
                 moreMem.signal();
         } finally {
             lock.unlock();

@@ -197,6 +197,7 @@ public final class RecordAccumulator {
             //ConcurrentMap<TopicPartition, Deque<ProducerBatch>> batches;
             //获取或者创建一个队列(一个partition对应一个队列，对应关系存在ConcurrentMap batches中)
             Deque<ProducerBatch> dq = getOrCreateDeque(tp);
+            //分段加锁
             synchronized (dq) {
                 if (closed)
                     throw new KafkaException("Producer closed while send in progress");
@@ -269,7 +270,7 @@ public final class RecordAccumulator {
      *  and memory records built) in one of the following cases (whichever comes first): right before send,
      *  if it is expired, or when the producer is closed.
      */
-    private RecordAppendResult tryAppend(long timestamp, byte[] key, byte[] value, Header[] headers,
+    private RecordAppendResult  tryAppend(long timestamp, byte[] key, byte[] value, Header[] headers,
                                          Callback callback, Deque<ProducerBatch> deque, long nowMs) {
         ProducerBatch last = deque.peekLast();
         if (last != null) {
