@@ -26,8 +26,24 @@ import java.util.concurrent.ConcurrentMap;
 /**
  * A simple read-optimized map implementation that synchronizes only writes and does a full copy on each modification
  */
-public class CopyOnWriteMap<K, V> implements ConcurrentMap<K, V> {
 
+/*
+* (1)这个数据结构在高并发情况下是线程安全的，因为在写的时候put()使用了synchronized关键字
+* (2)正是因为put方法使用了synchronized，如果有大量的写操作，那性能就会非常低。因而这个数据结构只适合读多写少的情况；
+*
+* RecordAccumulator中的ConcurrentMap<TopicPartition, Deque<ProducerBatch>> batches，本质是分区和队列的映射关系就用的这一数据结构;
+* batches的应用场景看好就是读多写少的场景
+*
+* batches:
+*  读数据：每生产一条消息，都会根据分区从batches里读取分区对应的Deque<ProducerBatch>；
+*  写数据：因为batches是分区和队列的映射关系，有多少分区就写多少次。
+*  很明显，分区数量肯定远小于消息数量，因而是一个读多写少的场景，使用CopyOnWriteMap就十分合适。
+*
+* */
+public class CopyOnWriteMap<K, V> implements ConcurrentMap<K, V> {
+    /*
+    * 核心变量是一个map,被volatile关键字修饰。在多线程情况下，如果这个map的值发生变化，其他线程也可见。
+    * */
     private volatile Map<K, V> map;
 
     public CopyOnWriteMap() {
@@ -84,6 +100,9 @@ public class CopyOnWriteMap<K, V> implements ConcurrentMap<K, V> {
     }
 
     @Override
+    /*
+    * 线程安全的
+    * */
     public synchronized V put(K k, V v) {
         Map<K, V> copy = new HashMap<K, V>(this.map);
         V prev = copy.put(k, v);
