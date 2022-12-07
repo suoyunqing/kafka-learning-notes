@@ -84,6 +84,9 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * This class is not thread safe!
  */
+/*
+* 这个selector是Kafka基于java nio里的selector去封装的；
+* */
 public class Selector implements Selectable, AutoCloseable {
 
     public static final long NO_IDLE_TIMEOUT_MS = -1;
@@ -506,7 +509,7 @@ public class Selector implements Selectable, AutoCloseable {
      * @param currentTimeNanos time at which set of keys was determined
      */
     // package-private for testing
-    void pollSelectionKeys(Set<SelectionKey> selectionKeys,
+    void  pollSelectionKeys(Set<SelectionKey> selectionKeys,
                            boolean isImmediatelyConnected,
                            long currentTimeNanos) {
         for (SelectionKey key : determineHandlingOrder(selectionKeys)) {
@@ -641,6 +644,7 @@ public class Selector implements Selectable, AutoCloseable {
     // package-private for testing
     void write(KafkaChannel channel) throws IOException {
         String nodeId = channel.id();
+        //往服务端发送数据
         long bytesSent = channel.write();
         NetworkSend send = channel.maybeCompleteSend();
         // We may complete the send with bytesSent < 1 if `TransportLayer.hasPendingWrites` was true and `channel.write()`

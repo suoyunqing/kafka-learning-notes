@@ -520,6 +520,8 @@ public class NetworkClient implements KafkaClient {
                 request,
                 send,
                 now);
+        //这里往inFlightRequests组件中，存Request请求，存储的是正在发送或者已经还没有收到响应的请求
+        //请求成功接收到响应后，会从此处移除请求
         this.inFlightRequests.add(inFlightRequest);
         selector.send(new NetworkSend(clientRequest.destination(), send));
     }
