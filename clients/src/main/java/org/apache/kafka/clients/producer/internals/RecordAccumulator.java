@@ -453,7 +453,7 @@ public final class RecordAccumulator {
         Set<Node> readyNodes = new HashSet<>();
         long nextReadyCheckDelayMs = Long.MAX_VALUE;
         Set<String> unknownLeaderTopics = new HashSet<>();
-
+        //waiter里有数据，说明bufferPool满了，内存不够， exhausted为true
         boolean exhausted = this.free.queued() > 0;
         for (Map.Entry<TopicPartition, Deque<ProducerBatch>> entry : this.batches.entrySet()) {
             Deque<ProducerBatch> deque = entry.getValue();
@@ -474,13 +474,16 @@ public final class RecordAccumulator {
                         //尝试次数>1且等待时间<retryBackoffMs,则当前batch是正在重试的batch
                         boolean backingOff = batch.attempts() > 0 && waitedTimeMs < retryBackoffMs;
                         //需要等待的时间
+                        //linngerMs，默认时间为0，表示来一条消息，发一条。很明显不合适，所以一定要记得配置该参数；参考值100ms
                         long timeToWaitMs = backingOff ? retryBackoffMs : lingerMs;
+                        //deque.size() ，队列中有超过一个批次，就意味着至少有一个批次写满了
                         boolean full = deque.size() > 1 || batch.isFull();
                         //需要等待的时间和已经等待的时间比较，得出是否已经过期；
                         boolean expired = waitedTimeMs >= timeToWaitMs;
                         boolean transactionCompleting = transactionManager != null && transactionManager.isCompleting();
                         //只要满足一个条件，就可以发送消息
                         //1. 有full的batch;
+                        //   expired,时间到了，批次没写满也得发送；
                         //2. 有消息在缓冲区排队（也说明full了）;
                         //3. producer关闭;
                         //4. flushInProgress;

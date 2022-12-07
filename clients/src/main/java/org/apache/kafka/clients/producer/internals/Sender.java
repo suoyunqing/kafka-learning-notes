@@ -354,6 +354,7 @@ public class Sender implements Runnable {
         long notReadyTimeout = Long.MAX_VALUE;
         while (iter.hasNext()) {
             Node node = iter.next();
+            //检查将要发送数据的主机的网络是否已经建立好
             if (!this.client.ready(node, now)) {
                 iter.remove();
                 notReadyTimeout = Math.min(notReadyTimeout, this.client.pollDelayMs(node, now));
@@ -361,7 +362,7 @@ public class Sender implements Runnable {
         }
 
         // create produce requests
-        //node和可以向该node发送的batchList的映射
+        //node和可以向该node发送的batchList的映射，筛选出
         Map<Integer, List<ProducerBatch>> batches = this.accumulator.drain(cluster, result.readyNodes, this.maxRequestSize, now);
         //记录Map<TopicPartition, List<ProducerBatch>>的数据结构中；
         addToInflightBatches(batches);
@@ -375,6 +376,10 @@ public class Sender implements Runnable {
 
         accumulator.resetNextBatchExpiryTime();
         List<ProducerBatch> expiredInflightBatches = getExpiredInflightBatches(now);
+        /*
+        *放弃超时的batch;
+        *
+        *  */
         List<ProducerBatch> expiredBatches = this.accumulator.expiredBatches(now);
         expiredBatches.addAll(expiredInflightBatches);
 

@@ -74,6 +74,11 @@ final class ClusterConnectionStates {
      * @param now the current time in ms
      * @return true if we can initiate a new connection
      */
+
+    /*
+    * 生产者缓存多个联合，跟我们的broker的节点数量是一致的
+    * 判断
+    * */
     public boolean canConnect(String id, long now) {
         NodeConnectionState state = nodeState.get(id);
         if (state == null)
