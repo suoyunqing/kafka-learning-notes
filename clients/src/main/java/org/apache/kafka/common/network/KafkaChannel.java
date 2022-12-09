@@ -414,6 +414,7 @@ public class KafkaChannel implements AutoCloseable {
         return receive;
     }
 
+    //判断一次数据接收是否完整，若未完整，继续用receive去读数据；如果已经完整，则将其设置为null;
     public NetworkReceive maybeCompleteReceive() {
         if (receive != null && receive.complete()) {
             receive.payload().rewind();
@@ -452,6 +453,7 @@ public class KafkaChannel implements AutoCloseable {
 
     private long receive(NetworkReceive receive) throws IOException {
         try {
+            //从transportLayer读数据
             return receive.readFrom(transportLayer);
         } catch (SslAuthenticationException e) {
             // With TLSv1.3, post-handshake messages may throw SSLExceptions, which are

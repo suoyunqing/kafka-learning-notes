@@ -36,6 +36,9 @@ public class NetworkReceive implements Receive {
     private static final ByteBuffer EMPTY_BUFFER = ByteBuffer.allocate(0);
 
     private final String source;
+    //this.size = ByteBuffer.allocate(4);
+    //是一个4字节的内存空间，从响应中读取4字节，其实就是一个Int类型的值，表示真正响应内容的大小,比如值为50，
+    // 那就再从响应中读取50字节，就是一个真正响应的内容。下一次，继续读4字节确定响应大小，然后再响应，依次循环
     private final ByteBuffer size;
     private final int maxSize;
     private final MemoryPool memoryPool;
@@ -91,7 +94,10 @@ public class NetworkReceive implements Receive {
 
     public long readFrom(ScatteringByteChannel channel) throws IOException {
         int read = 0;
+        //粘包和拆包问题处理，靠两点，一是size.hasRemaining()的反复判断，
+        //二是一直读直到一个NetworkReceive is complete，参考89行的complete;
         if (size.hasRemaining()) {
+            //确定返回的消息的大小
             int bytesRead = channel.read(size);
             if (bytesRead < 0)
                 throw new EOFException();

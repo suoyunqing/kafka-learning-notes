@@ -574,6 +574,7 @@ public class Selector implements Selectable, AutoCloseable {
 
                 //if channel is ready and has bytes to read from socket or buffer, and has no
                 //previous completed receive then read from it
+                //读响应
                 if (channel.ready() && (key.isReadable() || channel.hasBytesBuffered()) && !hasCompletedReceive(channel)
                         && !explicitlyMutedChannels.contains(channel)) {
                     attemptRead(channel);
