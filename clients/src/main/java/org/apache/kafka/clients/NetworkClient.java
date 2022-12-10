@@ -332,6 +332,7 @@ public class NetworkClient implements KafkaClient {
     }
 
     private void cancelInFlightRequests(String nodeId, long now, Collection<ClientResponse> responses) {
+        //inFlightRequests，清空该节点上的inFlightRequests消息
         Iterable<InFlightRequest> inFlightRequests = this.inFlightRequests.clearAll(nodeId);
         for (InFlightRequest request : inFlightRequests) {
             log.trace("Cancelled request {} {} with correlation id {} due to node {} being disconnected",
@@ -339,6 +340,7 @@ public class NetworkClient implements KafkaClient {
 
             if (!request.isInternalRequest) {
                 if (responses != null)
+                    //响应中加入，封装了一个responseBody为null的response
                     responses.add(request.disconnected(now, null));
             } else if (request.header.apiKey() == ApiKeys.METADATA) {
                 metadataUpdater.handleFailedRequest(now, Optional.empty());
@@ -565,6 +567,7 @@ public class NetworkClient implements KafkaClient {
         handleConnections();
         handleInitiateApiVersionRequests(updatedNow);
         handleTimedOutConnections(responses, updatedNow);
+        //处理超时的请求
         handleTimedOutRequests(responses, updatedNow);
         //处理ClientResponse，也是真正处理响应的地方，调用回调函数
         completeResponses(responses);
@@ -749,6 +752,7 @@ public class NetworkClient implements KafkaClient {
                                       String nodeId,
                                       long now,
                                       ChannelState disconnectState) {
+        //关闭连接
         connectionStates.disconnected(nodeId, now);
         apiVersions.remove(nodeId);
         nodesNeedingApiVersionsFetch.remove(nodeId);
@@ -785,11 +789,13 @@ public class NetworkClient implements KafkaClient {
      * @param now The current time
      */
     private void handleTimedOutRequests(List<ClientResponse> responses, long now) {
+        //获取请求超时的主机
         List<String> nodeIds = this.inFlightRequests.nodesWithTimedOutRequests(now);
         for (String nodeId : nodeIds) {
             // close connection to the node
             this.selector.close(nodeId);
             log.debug("Disconnecting from node {} due to request timeout.", nodeId);
+            //处理
             processDisconnection(responses, nodeId, now, ChannelState.LOCAL_CLOSE);
         }
     }

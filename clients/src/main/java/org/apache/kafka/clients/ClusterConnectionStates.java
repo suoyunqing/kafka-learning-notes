@@ -198,6 +198,8 @@ final class ClusterConnectionStates {
                 nodeState.clearAddresses();
             }
         }
+        //修改主机的连接状态为DISCONNECTED
+        //sender线程 检查网络是否具备可以发送消息的条件 是否可以尝试建立连接
         nodeState.state = ConnectionState.DISCONNECTED;
     }
 
