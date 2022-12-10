@@ -559,13 +559,14 @@ public class NetworkClient implements KafkaClient {
         long updatedNow = this.time.milliseconds();
         List<ClientResponse> responses = new ArrayList<>();
         handleCompletedSends(responses, updatedNow);
-        //处理响应，响应里就会有我们需要的元数据
+        //处理响应，响应里就会有我们需要的元数据,NetworkReceive--->ClientResponse
         handleCompletedReceives(responses, updatedNow);
         handleDisconnections(responses, updatedNow);
         handleConnections();
         handleInitiateApiVersionRequests(updatedNow);
         handleTimedOutConnections(responses, updatedNow);
         handleTimedOutRequests(responses, updatedNow);
+        //处理ClientResponse，也是真正处理响应的地方，调用回调函数
         completeResponses(responses);
 
         return responses;
@@ -864,7 +865,7 @@ public class NetworkClient implements KafkaClient {
         for (NetworkReceive receive : this.selector.completedReceives()) {
             String source = receive.source();
             InFlightRequest req = inFlightRequests.completeNext(source);
-
+            //解析响应
             AbstractResponse response = parseResponse(receive.payload(), req.header);
             if (throttleTimeSensor != null)
                 throttleTimeSensor.record(response.throttleTimeMs(), now);
@@ -882,6 +883,7 @@ public class NetworkClient implements KafkaClient {
             else if (req.isInternalRequest && response instanceof ApiVersionsResponse)
                 handleApiVersionsResponse(responses, req, now, (ApiVersionsResponse) response);
             else
+                //request和receive--->ClientResponse
                 responses.add(req.completed(response, now));
         }
     }

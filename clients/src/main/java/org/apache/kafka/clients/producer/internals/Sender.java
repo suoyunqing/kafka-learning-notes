@@ -169,6 +169,7 @@ public class Sender implements Runnable {
 
     private void maybeRemoveAndDeallocateBatch(ProducerBatch batch) {
         maybeRemoveFromInflightBatches(batch);
+        //归还内存
         this.accumulator.deallocate(batch);
     }
 
@@ -549,6 +550,7 @@ public class Sender implements Runnable {
      * Handle a produce response
      */
     private void handleProduceResponse(ClientResponse response, Map<TopicPartition, ProducerBatch> batches, long now) {
+        //
         RequestHeader requestHeader = response.requestHeader();
         int correlationId = requestHeader.correlationId();
         if (response.wasDisconnected()) {
@@ -582,11 +584,13 @@ public class Sender implements Runnable {
                                 .collect(Collectors.toList()),
                             p.errorMessage());
                     ProducerBatch batch = batches.get(tp);
+                    //回调函数的核心代码
                     completeBatch(batch, partResp, correlationId, now);
                 }));
                 this.sensors.recordLatency(response.destination(), response.requestLatencyMs());
             } else {
                 // this is the acks = 0 case, just complete all requests
+                // ack = 0, 无需broker返回响应
                 for (ProducerBatch batch : batches.values()) {
                     completeBatch(batch, new ProduceResponse.PartitionResponse(Errors.NONE), correlationId, now);
                 }
@@ -629,6 +633,8 @@ public class Sender implements Runnable {
                     batch.topicPartition,
                     this.retries - batch.attempts() - 1,
                     formatErrMsg(response));
+                //如果可以重试，则重新将batch放入ConcurrentMap<TopicPartition, Deque<ProducerBatch>> batches;
+                //sender线程从batches继续选出可发送
                 reenqueueBatch(batch, now);
             } else if (error == Errors.DUPLICATE_SEQUENCE_NUMBER) {
                 // If we have received a duplicate sequence error, it means that the sequence number has advanced beyond
@@ -843,6 +849,7 @@ public class Sender implements Runnable {
                         .setTimeoutMs(timeout)
                         .setTransactionalId(transactionalId)
                         .setTopicData(tpd));
+        //producer的回调函数
         RequestCompletionHandler callback = response -> handleProduceResponse(response, recordsByPartition, time.milliseconds());
 
         String nodeId = Integer.toString(destination);

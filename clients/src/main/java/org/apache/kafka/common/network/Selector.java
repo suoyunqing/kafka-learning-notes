@@ -684,6 +684,7 @@ public class Selector implements Selectable, AutoCloseable {
 
             NetworkReceive receive = channel.maybeCompleteReceive();
             if (receive != null) {
+                //如果receive完成了，就将该receive存入LinkedHashMap<String, NetworkReceive> completedReceives;
                 addToCompletedReceives(channel, receive, currentTimeMs);
             }
         }
@@ -1052,6 +1053,7 @@ public class Selector implements Selectable, AutoCloseable {
      * adds a receive to completed receives
      */
     private void addToCompletedReceives(KafkaChannel channel, NetworkReceive networkReceive, long currentTimeMs) {
+        //KafkaChannel就代表一个网络的连接，一台kafka的主机就对应一个KafkaChannel
         if (hasCompletedReceive(channel))
             throw new IllegalStateException("Attempting to add second completed receive to channel " + channel.id());
 
