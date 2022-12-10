@@ -186,6 +186,8 @@ public class Sender implements Runnable {
                 Iterator<ProducerBatch> iter = partitionInFlightBatches.iterator();
                 while (iter.hasNext()) {
                     ProducerBatch batch = iter.next();
+                    //accumulator.getDeliveryTimeoutMs()，一个batch必须在这个时间内发出去并完成（收到响应）;
+                    //deliveryTimeoutMs=lingerMs + requestTimeoutMs, 默认30s;
                     if (batch.hasReachedDeliveryTimeout(accumulator.getDeliveryTimeoutMs(), now)) {
                         iter.remove();
                         // expireBatches is called in Sender.sendProducerData, before client.poll.
@@ -375,12 +377,18 @@ public class Sender implements Runnable {
             }
         }
 
+        /*
+         *放弃超时的batch;
+         *
+         * 超时的batch有两种情况：（1）batch尚未发送出去，可能原因有batch的目标节点网络不畅；
+         *                     （2）batch已经发送出去，通过addToInflightBatches(batches)记录在Map<TopicPartition, List<ProducerBatch>> inFlightBatches中。
+         *                         发送出去了，但没有成功；
+         *
+         * 对于超时的batch，调用failBatch(expiredBatch, new TimeoutException(errorMessage), false)，从inFlightBatches中删除，归还内存;
+         * 这和收到失败响应时的操作一样
+         *  */
         accumulator.resetNextBatchExpiryTime();
         List<ProducerBatch> expiredInflightBatches = getExpiredInflightBatches(now);
-        /*
-        *放弃超时的batch;
-        *
-        *  */
         List<ProducerBatch> expiredBatches = this.accumulator.expiredBatches(now);
         expiredBatches.addAll(expiredInflightBatches);
 
@@ -770,7 +778,7 @@ public class Sender implements Runnable {
         }
 
         this.sensors.recordErrors(batch.topicPartition.topic(), batch.recordCount);
-
+        //batch.completeExceptionally(topLevelException, recordExceptions)很重要，
         if (batch.completeExceptionally(topLevelException, recordExceptions)) {
             maybeRemoveAndDeallocateBatch(batch);
         }

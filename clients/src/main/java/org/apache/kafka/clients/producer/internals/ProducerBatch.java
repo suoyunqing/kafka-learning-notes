@@ -257,6 +257,7 @@ public final class ProducerBatch {
         long logAppendTime,
         Function<Integer, RuntimeException> recordExceptions
     ) {
+        //此处触发了单个message的回调函数；
         // Set the future before invoking the callbacks as we rely on its state for the `onCompletion` call
         produceFuture.set(baseOffset, logAppendTime, recordExceptions);
 
