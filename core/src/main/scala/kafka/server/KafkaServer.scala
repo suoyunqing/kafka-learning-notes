@@ -292,6 +292,7 @@ class KafkaServer(
         //
         // Note that we allow the use of KRaft mode controller APIs when forwarding is enabled
         // so that the Envelope request is exposed. This is only used in testing currently.
+        //NIO的服务端
         socketServer = new SocketServer(config, metrics, time, credentialProvider, apiVersionManager)
         socketServer.startup(startProcessingRequests = false)
 

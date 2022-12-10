@@ -127,9 +127,11 @@ class SocketServer(val config: KafkaConfig,
               controlPlaneListener: Option[EndPoint] = config.controlPlaneListener,
               dataPlaneListeners: Seq[EndPoint] = config.dataPlaneListeners): Unit = {
     this.synchronized {
+      //创建acceptor线程
       createControlPlaneAcceptorAndProcessor(controlPlaneListener)
       createDataPlaneAcceptorsAndProcessors(config.numNetworkThreads, dataPlaneListeners)
       if (startProcessingRequests) {
+        //启动acceptor线程
         this.startProcessingRequests()
       }
     }
@@ -217,6 +219,7 @@ class SocketServer(val config: KafkaConfig,
         s"${threadPrefix}-kafka-socket-acceptor-${endpoint.listenerName}-${endpoint.securityProtocol}-${endpoint.port}",
         acceptor
       ).start()
+      //启动
       acceptor.awaitStartup()
     }
     info(s"Started $threadPrefix acceptor and processor(s) for endpoint : ${endpoint.listenerName}")
@@ -619,9 +622,11 @@ private[kafka] class Acceptor(val endPoint: EndPoint,
    * Accept loop that checks for new connection attempts
    */
   def run(): Unit = {
+    //SelectionKey.OP_ACCEPT
     serverChannel.register(nioSelector, SelectionKey.OP_ACCEPT)
     startupComplete()
     try {
+      //只要broker没有关闭，无限循环
       while (isRunning) {
         try {
           acceptNewConnections()
@@ -675,6 +680,7 @@ private[kafka] class Acceptor(val endPoint: EndPoint,
   private def acceptNewConnections(): Unit = {
     val ready = nioSelector.select(500)
     if (ready > 0) {
+      //SelectionKey.OP_ACCEPT
       val keys = nioSelector.selectedKeys()
       val iter = keys.iterator()
       while (iter.hasNext && isRunning) {
