@@ -56,7 +56,7 @@ class KafkaRequestHandler(id: Int,
       // time_window is independent of the number of threads, each recorded idle
       // time should be discounted by # threads.
       val startSelectTime = time.nanoseconds
-
+      //从requestQueue中取出请求
       val req = requestChannel.receiveRequest(300)
       val endTime = time.nanoseconds
       val idleTime = endTime - startSelectTime
@@ -72,6 +72,12 @@ class KafkaRequestHandler(id: Int,
           try {
             request.requestDequeueTimeNanos = endTime
             trace(s"Kafka request handler $id on broker $brokerId handling request $request")
+            //把request交给ApiRequestHandler apis处理
+            //截止目前，acceptor线程通过while循环依靠selector创建SocketChannel,然后将SocketChannel放进某一个processor线程的newConnections队列中
+            //processor注册一个OP_READ事件，并把Map[String, KafkaChannel] channels；开始读请求，转换为networkReceive;再转换为request，放入RequestChannel.Request requestQueue中
+            //kafkaServer启动时，会创建一个线程池KafkaRequestHandlerPool，线程会从requestQueue中取出request,再交由ApiRequestHandler apis处理
+
+            //acceptor, processor, KafkaRequestHandlerPool, ApiRequestHandler
             apis.handle(request, requestLocal)
           } catch {
             case e: FatalExitError =>
@@ -118,11 +124,13 @@ class KafkaRequestHandlerPool(val brokerId: Int,
   this.logIdent = "[" + logAndThreadNamePrefix + " Kafka Request Handler on Broker " + brokerId + "], "
   val runnables = new mutable.ArrayBuffer[KafkaRequestHandler](numThreads)
   for (i <- 0 until numThreads) {
+    //创建线程，KafkaRequestHandler
     createHandler(i)
   }
 
   def createHandler(id: Int): Unit = synchronized {
     runnables += new KafkaRequestHandler(id, brokerId, aggregateIdleMeter, threadPoolSize, requestChannel, apis, time)
+    //启动
     KafkaThread.daemon(logAndThreadNamePrefix + "-kafka-request-handler-" + id, runnables(id)).start()
   }
 

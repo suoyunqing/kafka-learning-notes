@@ -708,6 +708,7 @@ private[kafka] class Acceptor(val endPoint: EndPoint,
                   processors(currentProcessorIndex)
                 }
                 currentProcessorIndex += 1
+                //assignNewConnection(socketChannel, processor, retriesLeft == 0),把socketChannel赋给processor
               } while (!assignNewConnection(socketChannel, processor, retriesLeft == 0))
             }
           } else
