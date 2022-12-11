@@ -1178,6 +1178,8 @@ private[kafka] class Processor(val id: Int,
       val channel = newConnections.poll()
       try {
         debug(s"Processor $id listening to new connection from ${channel.socket.getRemoteSocketAddress}")
+        //往自己的selector上注册OP_READ事件
+        //这样processor线程就可以读取客户端发送过来的连接
         selector.register(connectionId(channel.socket), channel)
         connectionsProcessed += 1
       } catch {
