@@ -129,9 +129,10 @@ class SocketServer(val config: KafkaConfig,
     this.synchronized {
       //创建acceptor线程
       createControlPlaneAcceptorAndProcessor(controlPlaneListener)
+      //numNetworkThreads,默认值为3，创建numNetworkThreads个processor
       createDataPlaneAcceptorsAndProcessors(config.numNetworkThreads, dataPlaneListeners)
       if (startProcessingRequests) {
-        //启动acceptor线程
+        //启动acceptor线程和processor线程
         this.startProcessingRequests()
       }
     }
@@ -212,6 +213,7 @@ class SocketServer(val config: KafkaConfig,
     debug(s"Wait for authorizer to complete start up on listener ${endpoint.listenerName}")
     waitForAuthorizerFuture(acceptor, authorizerFutures)
     debug(s"Start processors on listener ${endpoint.listenerName}")
+    //启动processor
     acceptor.startProcessors(threadPrefix)
     debug(s"Start acceptor thread on listener ${endpoint.listenerName}")
     if (!acceptor.isStarted()) {
@@ -296,7 +298,7 @@ class SocketServer(val config: KafkaConfig,
     val securityProtocol = endpoint.securityProtocol
     val listenerProcessors = new ArrayBuffer[Processor]()
     val isPrivilegedListener = controlPlaneRequestChannelOpt.isEmpty && config.interBrokerListenerName == listenerName
-
+    //newProcessorsPerListener, 即numNetworkThreads，遍历，说明会创建即numNetworkThreads个processor线程
     for (_ <- 0 until newProcessorsPerListener) {
       val processor = newProcessor(nextProcessorId, dataPlaneRequestChannel, connectionQuotas,
         listenerName, securityProtocol, memoryPool, isPrivilegedListener)
@@ -585,6 +587,7 @@ private[kafka] class Acceptor(val endPoint: EndPoint,
   }
 
   private def startProcessors(processors: Seq[Processor], processorThreadPrefix: String): Unit = synchronized {
+    //.start(), 启动线程
     processors.foreach { processor =>
       KafkaThread.nonDaemon(
         s"${processorThreadPrefix}-kafka-network-thread-$nodeId-${endPoint.listenerName}-${endPoint.securityProtocol}-${processor.id}",
