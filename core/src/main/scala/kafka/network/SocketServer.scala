@@ -902,6 +902,7 @@ private[kafka] class Processor(val id: Int,
           // register any new responses for writing
           processNewResponses()
           poll()
+          //处理我们接收到的响应
           processCompletedReceives()
           processCompletedSends()
           processDisconnected()
@@ -1037,7 +1038,7 @@ private[kafka] class Processor(val id: Int,
                 val context = new RequestContext(header, connectionId, channel.socketAddress,
                   channel.principal, listenerName, securityProtocol,
                   channel.channelMetadataRegistry.clientInformation, isPrivilegedListener, channel.principalSerde)
-
+                //NetworkReceive---> RequestChannel.Request
                 val req = new RequestChannel.Request(processor = id, context = context,
                   startTimeNanos = nowNanos, memoryPool, receive.payload, requestChannel.metrics, None)
 
@@ -1051,6 +1052,7 @@ private[kafka] class Processor(val id: Int,
                       apiVersionsRequest.data.clientSoftwareVersion))
                   }
                 }
+                //RequestChannel.Request放入 requestQueue中
                 requestChannel.sendRequest(req)
                 selector.mute(connectionId)
                 handleChannelMuteEvent(connectionId, ChannelMuteEvent.REQUEST_RECEIVED)
