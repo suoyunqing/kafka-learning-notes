@@ -693,6 +693,7 @@ private[kafka] class Acceptor(val endPoint: EndPoint,
 
           if (key.isAcceptable) {
             accept(key).foreach { socketChannel =>
+              //把socketChannel assign给processor
               // Assign the channel to the next processor (using round-robin) to which the
               // channel can be added without blocking. If newConnections queue is full on
               // all processors, block until the last one is able to accept a connection.
@@ -722,6 +723,7 @@ private[kafka] class Acceptor(val endPoint: EndPoint,
    * Accept a new connection
    */
   private def accept(key: SelectionKey): Option[SocketChannel] = {
+    //根据SelectionKey获取serverSocketChannel
     val serverSocketChannel = key.channel().asInstanceOf[ServerSocketChannel]
     val socketChannel = serverSocketChannel.accept()
     try {
@@ -759,6 +761,7 @@ private[kafka] class Acceptor(val endPoint: EndPoint,
   }
 
   private def assignNewConnection(socketChannel: SocketChannel, processor: Processor, mayBlock: Boolean): Boolean = {
+    //processor.accept
     if (processor.accept(socketChannel, mayBlock, blockedPercentMeter)) {
       debug(s"Accepted connection from ${socketChannel.socket.getRemoteSocketAddress} on" +
         s" ${socketChannel.socket.getLocalSocketAddress} and assigned it to processor ${processor.id}," +
@@ -1145,6 +1148,7 @@ private[kafka] class Processor(val id: Int,
   def accept(socketChannel: SocketChannel,
              mayBlock: Boolean,
              acceptorIdlePercentMeter: com.yammer.metrics.core.Meter): Boolean = {
+    //把socketChannel存入到存入到自己的队列newConnections中
     val accepted = {
       if (newConnections.offer(socketChannel))
         true
@@ -1156,8 +1160,10 @@ private[kafka] class Processor(val id: Int,
       } else
         false
     }
-    if (accepted)
+    if (accepted) {
+      //唤醒processor线程
       wakeup()
+    }
     accepted
   }
 
