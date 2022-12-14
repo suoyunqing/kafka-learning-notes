@@ -166,6 +166,7 @@ class KafkaApis(val requestChannel: RequestChannel,
       }
 
       request.header.apiKey match {
+        //处理producer请求
         case ApiKeys.PRODUCE => handleProduceRequest(request, requestLocal)
         case ApiKeys.FETCH => handleFetchRequest(request)
         case ApiKeys.LIST_OFFSETS => handleListOffsetRequest(request)
@@ -554,6 +555,7 @@ class KafkaApis(val requestChannel: RequestChannel,
     val authorizedTopics = authHelper.filterByAuthorized(request.context, WRITE, TOPIC,
       produceRequest.data().topicData().asScala)(_.name())
 
+    //produceRequest,可能包含多个分区的message，所以需要按分区处理一遍
     produceRequest.data.topicData.forEach(topic => topic.partitionData.forEach { partition =>
       val topicPartition = new TopicPartition(topic.name, partition.index)
       // This caller assumes the type is MemoryRecords and that is true on current serialization
@@ -633,6 +635,7 @@ class KafkaApis(val requestChannel: RequestChannel,
           requestHelper.sendNoOpResponseExemptThrottle(request)
         }
       } else {
+        //消息写盘完毕，给producer发送响应
         requestChannel.sendResponse(request, new ProduceResponse(mergedResponseStatus.asJava, maxThrottleTimeMs), None)
       }
     }
@@ -649,6 +652,7 @@ class KafkaApis(val requestChannel: RequestChannel,
       val internalTopicsAllowed = request.header.clientId == AdminUtils.AdminClientId
 
       // call the replica manager to append messages to the replicas
+      //把接收到的数据追加到磁盘上
       replicaManager.appendRecords(
         timeout = produceRequest.timeout.toLong,
         requiredAcks = produceRequest.acks,
@@ -656,6 +660,7 @@ class KafkaApis(val requestChannel: RequestChannel,
         origin = AppendOrigin.Client,
         entriesPerPartition = authorizedRequestInfo,
         requestLocal = requestLocal,
+        //消息写到磁盘之后的回调函数
         responseCallback = sendResponseCallback,
         recordConversionStatsCallback = processingStatsCallback)
 

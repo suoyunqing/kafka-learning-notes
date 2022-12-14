@@ -902,6 +902,7 @@ private[kafka] class Processor(val id: Int,
           configureNewConnections()
           // register any new responses for writing
           processNewResponses()
+          //读请求、写请求，selector.poll(pollTimeout)
           poll()
           //处理我们接收到的响应
           processCompletedReceives()
@@ -942,7 +943,9 @@ private[kafka] class Processor(val id: Int,
 
   private def processNewResponses(): Unit = {
     var currentResponse: RequestChannel.Response = null
+    //dequeueResponse(), 获取responseQueue的response,遍历
     while ({currentResponse = dequeueResponse(); currentResponse != null}) {
+      //处理每一个response
       val channelId = currentResponse.request.context.connectionId
       try {
         currentResponse match {
@@ -958,6 +961,7 @@ private[kafka] class Processor(val id: Int,
             tryUnmuteChannel(channelId)
 
           case response: SendResponse =>
+            //核心代码
             sendResponse(response, response.responseSend)
           case response: CloseConnectionResponse =>
             updateRequestMetrics(response)
@@ -993,7 +997,9 @@ private[kafka] class Processor(val id: Int,
     // removed from the Selector after discarding any pending staged receives.
     // `openOrClosingChannel` can be None if the selector closed the connection because it was idle for too long
     if (openOrClosingChannel(connectionId).isDefined) {
+      //注册一个OP_WRITE事件
       selector.send(new NetworkSend(connectionId, responseSend))
+      //缓存response， inflightResponses connectionId---> response的一个映射
       inflightResponses += (connectionId -> response)
     }
   }

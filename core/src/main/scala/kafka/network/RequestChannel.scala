@@ -386,6 +386,7 @@ class RequestChannel(val queueSize: Int,
     onComplete: Option[Send => Unit]
   ): Unit = {
     updateErrorMetrics(request.header.apiKey, response.errorCounts.asScala)
+    //封装SendResponse并发送，其实也没有真正发送，只是放到对应process的responseQueue中
     sendResponse(new RequestChannel.SendResponse(
       request,
       request.buildResponseSend(response),
