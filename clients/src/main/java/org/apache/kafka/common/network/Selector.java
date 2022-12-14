@@ -647,6 +647,7 @@ public class Selector implements Selectable, AutoCloseable {
         String nodeId = channel.id();
         //往服务端发送数据
         long bytesSent = channel.write();
+        //transportLayer.removeInterestOps(SelectionKey.OP_WRITE);
         NetworkSend send = channel.maybeCompleteSend();
         // We may complete the send with bytesSent < 1 if `TransportLayer.hasPendingWrites` was true and `channel.write()`
         // caused the pending writes to be written to the socket channel buffer
