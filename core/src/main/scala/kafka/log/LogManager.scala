@@ -265,7 +265,7 @@ class LogManager(logDirs: Seq[File],
     val config = topicConfigOverrides.getOrElse(topicPartition.topic, defaultConfig)
     val logRecoveryPoint = recoveryPoints.getOrElse(topicPartition, 0L)
     val logStartOffset = logStartOffsets.getOrElse(topicPartition, 0L)
-
+    //创建Log对象
     val log = Log(
       dir = logDir,
       config = config,
@@ -281,6 +281,7 @@ class LogManager(logDirs: Seq[File],
       topicId = None,
       keepPartitionMetadataFile = keepPartitionMetadataFile)
 
+    //将logs放入futureLogs,currentLogs或logsToBeDeleted中
     if (logDir.getName.endsWith(Log.DeleteDirSuffix)) {
       addLogToBeDeleted(log)
     } else {
@@ -307,6 +308,7 @@ class LogManager(logDirs: Seq[File],
   /**
    * Recover and load all logs in the given data directories
    */
+  //startup的时候，会调用该方法
   private[log] def loadLogs(defaultConfig: LogConfig, topicConfigOverrides: Map[String, LogConfig]): Unit = {
     info(s"Loading logs from log dirs $liveLogDirs")
     val startMs = time.hiResClockMs()
@@ -314,11 +316,13 @@ class LogManager(logDirs: Seq[File],
     val offlineDirs = mutable.Set.empty[(String, IOException)]
     val jobs = ArrayBuffer.empty[Seq[Future[_]]]
     var numTotalLogs = 0
-
+    //遍历所有存储日志的最上级目录，即配置的存储目录
     for (dir <- liveLogDirs) {
       val logDirAbsolutePath = dir.getAbsolutePath
       var hadCleanShutdown: Boolean = false
       try {
+        //numRecoveryThreadsPerDataDir,默认值为1
+        //为每个pool创建一个线程池，后面肯定是要启动线程池里的线程去加载日志
         val pool = Executors.newFixedThreadPool(numRecoveryThreadsPerDataDir)
         threadPools.append(pool)
 
@@ -358,16 +362,17 @@ class LogManager(logDirs: Seq[File],
         numTotalLogs += logsToLoad.length
 
         val jobsForDir = logsToLoad.map { logDir =>
+          //这里的logDir就是代表一个分区的目录
           val runnable: Runnable = () => {
             try {
               debug(s"Loading log $logDir")
 
               val logLoadStartMs = time.hiResClockMs()
+              //核心代码，一个分区目录，创建一个log对象
               val log = loadLog(logDir, hadCleanShutdown, recoveryPoints, logStartOffsets,
                 defaultConfig, topicConfigOverrides)
               val logLoadDurationMs = time.hiResClockMs() - logLoadStartMs
               val currentNumLoaded = numLogsLoaded.incrementAndGet()
-
               info(s"Completed load of $log with ${log.numberOfSegments} segments in ${logLoadDurationMs}ms " +
                 s"($currentNumLoaded/${logsToLoad.length} loaded in $logDirAbsolutePath)")
             } catch {

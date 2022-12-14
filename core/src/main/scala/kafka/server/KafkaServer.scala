@@ -249,6 +249,7 @@ class KafkaServer(
         logDirFailureChannel = new LogDirFailureChannel(config.logDirs.size)
 
         /* start log manager */
+        //创建logManager
         logManager = LogManager(config, initialOfflineDirs,
           new ZkConfigRepository(new AdminZkClient(zkClient)),
           kafkaScheduler, time, brokerTopicStats, logDirFailureChannel, config.usesTopicId)
@@ -313,6 +314,7 @@ class KafkaServer(
         }
         alterIsrManager.start()
 
+        //创建replicaManager
         _replicaManager = createReplicaManager(isShuttingDown)
         replicaManager.startup()
 
@@ -439,6 +441,7 @@ class KafkaServer(
   }
 
   protected def createReplicaManager(isShuttingDown: AtomicBoolean): ReplicaManager = {
+    //replicaManager, 绑定logManager
     new ReplicaManager(config, metrics, time, Some(zkClient), kafkaScheduler, logManager, isShuttingDown, quotaManagers,
       brokerTopicStats, metadataCache, logDirFailureChannel, alterIsrManager)
   }
