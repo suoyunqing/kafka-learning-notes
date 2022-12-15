@@ -1525,6 +1525,7 @@ class Log(@volatile private var _dir: File,
    * Whether or not deletion is enabled, delete any log segments that are before the log start offset
    */
   def deleteOldSegments(): Int = {
+    //根据文件大小(默认-1，即无限大)或者保留时间（默认七天）来确定是否删除segment
     if (config.delete) {
       deleteLogStartOffsetBreachedSegments() +
         deleteRetentionSizeBreachedSegments() +

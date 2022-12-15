@@ -461,18 +461,22 @@ class LogManager(logDirs: Seq[File],
 
     /* Schedule the cleanup task to delete old logs */
     if (scheduler != null) {
+      //定时检查文件，清理超时的文件
       info("Starting log cleanup with a period of %d ms.".format(retentionCheckMs))
       scheduler.schedule("kafka-log-retention",
                          cleanupLogs _,
                          delay = InitialTaskDelayMs,
                          period = retentionCheckMs,
                          TimeUnit.MILLISECONDS)
+      //定时把内存中的数据写入磁盘
       info("Starting log flusher with a default period of %d ms.".format(flushCheckMs))
       scheduler.schedule("kafka-log-flusher",
                          flushDirtyLogs _,
                          delay = InitialTaskDelayMs,
                          period = flushCheckMs,
                          TimeUnit.MILLISECONDS)
+      //定时更新一个检查点的文件
+      //kafka重启的时候，需要恢复那些数据？
       scheduler.schedule("kafka-recovery-point-checkpoint",
                          checkpointLogRecoveryOffsets _,
                          delay = InitialTaskDelayMs,
@@ -483,6 +487,7 @@ class LogManager(logDirs: Seq[File],
                          delay = InitialTaskDelayMs,
                          period = flushStartOffsetCheckpointMs,
                          TimeUnit.MILLISECONDS)
+      //定期删除日志
       scheduler.schedule("kafka-delete-logs", // will be rescheduled after each delete logs with a dynamic period
                          deleteLogs _,
                          delay = InitialTaskDelayMs,
@@ -1139,6 +1144,7 @@ class LogManager(logDirs: Seq[File],
       deletableLogs.foreach {
         case (topicPartition, log) =>
           debug(s"Garbage collecting '${log.name}'")
+          //删除日志，这里是删除Segments
           total += log.deleteOldSegments()
 
           val futureLog = futureLogs.get(topicPartition)
@@ -1214,6 +1220,9 @@ class LogManager(logDirs: Seq[File],
         val timeSinceLastFlush = time.milliseconds - log.lastFlushTime
         debug(s"Checking if flush is needed on ${topicPartition.topic} flush interval ${log.config.flushMs}" +
               s" last flushed ${log.lastFlushTime} time since last flush: $timeSinceLastFlush")
+        //如果超过flushMs，则选择flush
+        //flushMs默认值为long的最大值，就意味着kafak不会主动把内存里的数据写到kafka，这个操作由操作系统决定、完成
+        //这里就存在数据丢失的问题
         if(timeSinceLastFlush >= log.config.flushMs)
           log.flush()
       } catch {
